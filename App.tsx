@@ -1,6 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
+  FlatList,
   Image,
   Text,
   View,
@@ -14,97 +15,113 @@ type Pokemon = {
   image: string;
 };
 
+type PokemonListItem = {
+  name: string;
+  url: string;
+};
+
 export default function App() {
-  const [pokemonName, setPokemonName] = useState("");
-  const [pokemon, setPokemon] = useState<Pokemon | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [allPokemons, setAllPokemons] = useState<PokemonListItem[]>([]);
+  const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Carrega todos os Pokémon uma única vez
   useEffect(() => {
-    const delay = setTimeout(() => {
-      searchPokemon();
-    }, 500);
+    async function loadPokemons() {
+      try {
+        const response = await fetch(
+          "https://pokeapi.co/api/v2/pokemon?limit=1000"
+        );
 
-    return () => clearTimeout(delay);
-  }, [pokemonName]);
+        const data = await response.json();
 
-  async function searchPokemon() {
-    if (!pokemonName.trim()) {
-      setPokemon(null);
-      return;
-    }
-
-    // bloqueia números
-    if (!isNaN(Number(pokemonName))) {
-      setPokemon(null);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await fetch(
-        `https://pokeapi.co/api/v2/pokemon/${pokemonName.toLowerCase()}`
-      );
-
-      if (!response.ok) {
-        setPokemon(null);
-        return;
+        setAllPokemons(data.results);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
       }
-
-      const data = await response.json();
-
-      setPokemon({
-        name: data.name,
-        image: data.sprites.front_default,
-      });
-    } catch {
-      setPokemon(null);
-    } finally {
-      setLoading(false);
     }
-  }
+
+    loadPokemons();
+  }, []);
+
+  // Filtra enquanto digita
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredPokemons([]);
+      return;
+    }
+
+    // não permite números
+    if (!isNaN(Number(search))) {
+      setFilteredPokemons([]);
+      return;
+    }
+
+    const filtered = allPokemons
+      .filter((pokemon) =>
+        pokemon.name.startsWith(
+          search.toLowerCase()
+        )
+      )
+      .slice(0, 20)
+      .map((pokemon) => {
+        const id = pokemon.url
+          .split("/")
+          .filter(Boolean)
+          .pop();
+
+        return {
+          name: pokemon.name,
+          image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+        };
+      });
+
+    setFilteredPokemons(filtered);
+  }, [search]);
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      <Text style={styles.title}>Pokédex</Text>
+      <Text style={styles.title}>
+        Pokédex
+      </Text>
 
       <TextInput
-        placeholder="Digite o nome do Pokémon..."
-        value={pokemonName}
-        onChangeText={setPokemonName}
+        placeholder="Digite o nome..."
+        value={search}
+        onChangeText={setSearch}
         style={styles.input}
         placeholderTextColor="#777"
       />
 
-      {loading && (
+      {loading ? (
         <ActivityIndicator
           size="large"
-          style={{ marginTop: 30 }}
+          style={{ marginTop: 40 }}
+        />
+      ) : (
+        <FlatList
+          data={filteredPokemons}
+          keyExtractor={(item) => item.name}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <Image
+                source={{ uri: item.image }}
+                style={styles.image}
+              />
+
+              <Text style={styles.name}>
+                {item.name}
+              </Text>
+            </View>
+          )}
         />
       )}
-
-      {!loading && pokemon && (
-        <View style={styles.card}>
-          <Image
-            source={{ uri: pokemon.image }}
-            style={styles.image}
-          />
-
-          <Text style={styles.name}>
-            {pokemon.name}
-          </Text>
-        </View>
-      )}
-
-      {!loading &&
-        pokemonName !== "" &&
-        !pokemon && (
-          <Text style={styles.notFound}>
-            Pokémon não encontrado
-          </Text>
-        )}
     </View>
   );
 }
@@ -118,53 +135,48 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 34,
+    fontSize: 35,
     fontWeight: "bold",
     textAlign: "center",
     color: "#0077FF",
-    marginBottom: 30,
+    marginBottom: 25,
   },
 
   input: {
     backgroundColor: "#fff",
-    height: 55,
-    borderRadius: 15,
-    paddingHorizontal: 20,
     borderWidth: 2,
     borderColor: "#00C896",
+    borderRadius: 15,
+    height: 55,
+    paddingHorizontal: 15,
+    marginBottom: 20,
     fontSize: 16,
   },
 
   card: {
-    marginTop: 40,
     backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 25,
+    borderRadius: 20,
+    marginBottom: 12,
+    padding: 15,
+    flexDirection: "row",
     alignItems: "center",
 
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 6,
+    elevation: 5,
   },
 
   image: {
-    width: 180,
-    height: 180,
+    width: 80,
+    height: 80,
   },
 
   name: {
-    marginTop: 10,
-    fontSize: 28,
+    marginLeft: 20,
+    fontSize: 18,
     fontWeight: "bold",
     textTransform: "capitalize",
     color: "#00A86B",
-  },
-
-  notFound: {
-    textAlign: "center",
-    marginTop: 30,
-    fontSize: 18,
-    color: "red",
   },
 });
