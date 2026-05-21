@@ -11,14 +11,6 @@ Uma Pokédex desenvolvida com React Native e Expo consumindo dados da PokeAPI. O
 - 🎨 Interface moderna nas cores azul e verde
 - 📱 Layout responsivo
 
-## 📷 Demonstração
-
-Adicione aqui screenshots do aplicativo:
-
-![Tela inicial](./assets/screenshot.png)
-
----
-
 ## 🛠️ Tecnologias utilizadas
 
 - React Native
